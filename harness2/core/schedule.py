@@ -36,7 +36,7 @@ from . import library as library_store
 from . import recursion, runmark, selection
 from . import tree as harness_tree
 from .proposer import Proposer
-from .spec import BenchmarkAdapter, RunView
+from .spec import BenchmarkAdapter, RunView, rollout_cost
 
 MODES = ("agg", "seq")
 MODE_NAMES = {"agg": "parallel", "seq": "sequential"}
@@ -452,6 +452,7 @@ def _roll_bases(
                     run_dir=rd,
                     ok=exists,
                     delivered=exists and adapter.delivered(rd),
+                    cost_usd=rollout_cost(adapter, rd) if exists else 0.0,
                     error="" if exists else "adapter returned a missing run directory",
                 )
         except Exception as exc:
@@ -464,7 +465,12 @@ def _roll_bases(
         try:
             rd = adapter.execute(task_id, None, rid)
             return RunView(
-                label=label, run_id=rid, run_dir=rd, ok=True, delivered=adapter.delivered(rd)
+                label=label,
+                run_id=rid,
+                run_dir=rd,
+                ok=True,
+                delivered=adapter.delivered(rd),
+                cost_usd=rollout_cost(adapter, rd),
             )
         except Exception as exc:
             return _dead(label, rid, dead_dir, f"{type(exc).__name__}: {exc}")

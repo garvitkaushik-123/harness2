@@ -250,6 +250,22 @@ class BenchmarkAdapter(Protocol):
         """
 
 
+def rollout_cost(adapter: BenchmarkAdapter, run_dir: Path) -> float:
+    """Executor USD of one rollout, from the adapter's optional `rollout_cost(run_dir)`.
+
+    Accounting never fails a rollout: an adapter without the hook, a substrate that reports
+    no price, or an unreadable stream counts as 0.0.
+    """
+    fn = getattr(adapter, "rollout_cost", None)
+    if not callable(fn):
+        return 0.0
+    try:
+        usd = fn(run_dir)
+    except Exception:
+        return 0.0
+    return float(usd) if isinstance(usd, (int, float)) and usd > 0 else 0.0
+
+
 def resolve_prompts(adapter: BenchmarkAdapter, task_id: str) -> BenchPrompts:
     """Return the task-specific prompt profile when the adapter supplies one."""
     fn = getattr(adapter, "prompts_for", None)
@@ -272,6 +288,7 @@ __all__ = [
     "ModelId",
     "resolve_prompts",
     "resolve_channel_model",
+    "rollout_cost",
     "CHANNELS",
     "INSTALL_MODES",
 ]

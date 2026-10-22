@@ -31,11 +31,12 @@ import re
 import shutil
 import tempfile
 from pathlib import Path
-from typing import Mapping
+from typing import Mapping, Sequence
 
 from .. import config
 from ..core import runmark as RM
 from ..core import tree as HT
+from ..core.proposer import opencode_cost
 from ..core.tree import SurfaceSpec
 from .base import Install, Launcher, RunRequest
 
@@ -303,6 +304,19 @@ class OpencodeSubstrate:
         return render_events(
             Path(stream_path), obs_trunc=obs_trunc, max_chars=max_chars, args_trunc=args_trunc
         )
+
+    def stream_cost(self, stream_paths: Sequence[Path]) -> float | None:
+        """Executor USD over one rollout's event streams (every attempt it made), or None
+        when no stream could be read."""
+        total, seen = 0.0, False
+        for path in stream_paths:
+            try:
+                raw = Path(path).read_text(encoding="utf-8", errors="replace")
+            except OSError:
+                continue
+            seen = True
+            total += opencode_cost(raw)
+        return round(total, 6) if seen else None
 
     def preflight(self) -> None:
         """Checks the OpenCode checkout and bun exist; starts nothing."""

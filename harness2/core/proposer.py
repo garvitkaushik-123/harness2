@@ -300,7 +300,7 @@ class Proposer:
             stderr=subprocess.PIPE,
             timeout=wall,
         )
-        cost = _opencode_cost(p.stdout)
+        cost = opencode_cost(p.stdout)
         ans = out / "answer.md"
         if ans.is_file() and ans.read_text(errors="replace").strip():
             return ans.read_text(errors="replace"), cost, ""
@@ -483,7 +483,7 @@ def _opencode_stdout(stdout: str) -> tuple[str, str]:
     return "\n\n".join(texts), "; ".join(errors)[-300:]
 
 
-def _opencode_cost(stdout: str) -> float:
+def opencode_cost(stdout: str) -> float:
     """Sum `part.cost` over the step_finish events of an `opencode run --format json` stream."""
     total = 0.0
     for line in (stdout or "").splitlines():
