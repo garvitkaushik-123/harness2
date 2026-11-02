@@ -268,6 +268,11 @@ def _record_sessions(ledger: Ledger, stages: Sequence[Stage]) -> None:
         ledger.session(stage.label, stage.usd, cached=stage.cached, attempts=stage.attempts)
 
 
+def _record_rollout(ledger: Ledger, rv: RunView) -> None:
+    dead = "" if rv.ok else (rv.error or "no run directory")
+    ledger.rollout(rv.label, rv.cost_usd, dead=dead[:400])
+
+
 def _roll(
     adapter: BenchmarkAdapter,
     ledger: Ledger,
@@ -308,7 +313,7 @@ def _roll(
             error=f"{type(exc).__name__}: {exc}",
         )
     if record:
-        ledger.rollout(label, rv.cost_usd)
+        _record_rollout(ledger, rv)
     return rv
 
 
@@ -347,7 +352,7 @@ def _roll_many(
             )
         )
     for (label, _tree), rv in zip(items, got):
-        ledger.rollout(label, rv.cost_usd)
+        _record_rollout(ledger, rv)
         out[label] = rv
     return out
 
@@ -370,7 +375,7 @@ def run_parallel(
     surface = adapter.substrate.surface()
     ledger = Ledger(mode="agg", task_id=task_id, k=k)
     for r in base:
-        ledger.rollout(r.label, r.cost_usd)
+        _record_rollout(ledger, r)
     result = ModeResult(mode="agg", task_id=task_id, k=k, ledger=ledger)
     result.rollouts.update({r.label: r for r in base})
     ctx_dir = work_dir / "context"
@@ -479,7 +484,7 @@ def run_sequential(
     surface = adapter.substrate.surface()
     ledger = Ledger(mode="seq", task_id=task_id, k=k)
     for r in base:
-        ledger.rollout(r.label, r.cost_usd)
+        _record_rollout(ledger, r)
     result = ModeResult(mode="seq", task_id=task_id, k=k, ledger=ledger)
     result.rollouts.update({r.label: r for r in base})
     ctx_dir = work_dir / "context"

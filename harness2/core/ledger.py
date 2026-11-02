@@ -45,6 +45,7 @@ class Entry:
     cached: bool = False
     attempts: int = 1
     priced: bool = True
+    dead: str = ""
 
 
 @dataclass
@@ -56,10 +57,18 @@ class Ledger:
     k: int
     entries: list[Entry] = field(default_factory=list)
 
-    def rollout(self, label: str, usd: float | None = None, *, cached: bool = False) -> None:
+    def rollout(
+        self, label: str, usd: float | None = None, *, cached: bool = False, dead: str = ""
+    ) -> None:
         """Record one rollout; `usd=None` means it has no price, which sums as $0 but is
-        counted in `unpriced_rollouts` so a spend total can say what it leaves out."""
-        self.entries.append(Entry("rollout", label, usd or 0.0, cached, priced=usd is not None))
+        counted in `unpriced_rollouts` so a spend total can say what it leaves out.
+
+        `dead` is why a rollout produced no run at all. A dead rollout still counts toward
+        R=4k (the attempt was made), and `dead_rollouts` names it so evidence is not assumed.
+        """
+        self.entries.append(
+            Entry("rollout", label, usd or 0.0, cached, priced=usd is not None, dead=dead)
+        )
 
     def session(
         self, label: str, usd: float = 0.0, *, cached: bool = False, attempts: int = 1
@@ -89,6 +98,11 @@ class Ledger:
     @property
     def unpriced_rollouts(self) -> int:
         return sum(1 for e in self.entries if e.kind == "rollout" and not e.priced)
+
+    @property
+    def dead_rollouts(self) -> dict[str, str]:
+        """label -> why it died, for the rollouts that produced no run."""
+        return {e.label: e.dead for e in self.entries if e.kind == "rollout" and e.dead}
 
     def labels(self, kind: str) -> list[str]:
         return [e.label for e in self.entries if e.kind == kind]
@@ -134,6 +148,7 @@ class Ledger:
             "usd": self.usd,
             "rollout_usd": self.rollout_usd,
             "unpriced_rollouts": self.unpriced_rollouts,
+            "dead_rollouts": self.dead_rollouts,
             "session_usd": self.session_usd,
             "rollouts": self.labels("rollout"),
             "sessions": self.labels("session"),
